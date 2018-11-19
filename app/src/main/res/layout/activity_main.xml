@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.widget.FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <SurfaceView
+        android:id="@+id/surfaceView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+
+    <ImageButton
+        android:id="@+id/ibtnTakePicture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        app:srcCompat="@android:drawable/ic_menu_camera"
+        tools:ignore="ContentDescription" />
+
+    <ImageButton
+        android:id="@+id/ibtnChangeCam"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        app:srcCompat="@android:drawable/ic_menu_revert"
+        tools:ignore="ContentDescription" />
+
+</android.widget.FrameLayout>
