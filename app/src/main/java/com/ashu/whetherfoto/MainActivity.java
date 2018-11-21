@@ -1,12 +1,15 @@
 package com.ashu.whetherfoto;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.RectF;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -36,14 +39,21 @@ public class MainActivity extends AppCompatActivity{
 
     private BitmapRotate BitmapRotate;
     private PrepareCam PrepareCam;
+    private NetworkCheck NetworkCheck;
 
+    private Handler handlerMainActivity;
+    private Runnable runnableMainActivity;
+    private boolean flagThreadIsRun = false; //переменная для проверики запущен ли поток или нет
+
+    @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         //восстанавливаем состояние при повороте
         if(savedInstanceState != null){
-            iCameraId = savedInstanceState.getInt("camNum", 0);
+            iCameraId = savedInstanceState.getInt(
+                    getResources().getString(R.string.savedInstanceStateKey), 0);
         }else{
             iCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
         }
@@ -214,6 +224,54 @@ public class MainActivity extends AppCompatActivity{
                 requestPermissions(new String[]{Manifest.permission.CAMERA}, iNumberOfRequest);
             }
         }
+
+        //хэндлер для потока runnableMainActivity
+        handlerMainActivity = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                Bundle bundle = msg.getData();
+                String result_check = bundle.getString(
+                        getResources().getString(R.string.resultCheckKey));
+
+                if (result_check != null && result_check.equals("true")){
+                    Toast.makeText(
+                            getApplicationContext(),
+                            getResources().getString(R.string.toastNetworkCheckYes),
+                            Toast.LENGTH_SHORT).show();
+                }else{
+                    Toast.makeText(
+                            getApplicationContext(),
+                            getResources().getString(R.string.toastNetworkCheckNo),
+                            Toast.LENGTH_SHORT).show();
+                }
+                flagThreadIsRun = false;
+            }
+        };
+
+        //поток запускаемый при создании экрана (запуск происходит из onStart)
+        runnableMainActivity = new Runnable() {
+            @Override
+            public void run() {
+
+                flagThreadIsRun = true;
+                NetworkCheck = new NetworkCheck(getApplicationContext());
+                boolean resultCheck = NetworkCheck.checkInternet();
+                Bundle bundle = new Bundle();
+                if (resultCheck){
+                    bundle.putString(
+                            getResources().getString(R.string.resultCheckKey),
+                            String.valueOf(true));
+
+                }else {
+                    bundle.putString(
+                            getResources().getString(R.string.resultCheckKey),
+                            String.valueOf(false));
+                }
+                Message msg = handlerMainActivity.obtainMessage();
+                msg.setData(bundle);
+                handlerMainActivity.sendMessage(msg);
+            }
+        };
     }
 
 
@@ -221,8 +279,25 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt("camNum", iCameraId);
+        outState.putInt(getResources().getString(R.string.savedInstanceStateKey), iCameraId);
     }
+
+    @Override
+    protected void onStart(){
+        super.onStart();
+
+        if (!flagThreadIsRun){
+            Thread threadMainActivity = new Thread(runnableMainActivity);
+            threadMainActivity.setDaemon(true);
+            threadMainActivity.start();
+        }else{
+            Toast.makeText(
+                    getApplicationContext(),
+                    getResources().getString(R.string.toastThreadIsRuning),
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
 
     @Override

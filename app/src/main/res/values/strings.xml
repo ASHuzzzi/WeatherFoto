@@ -1,5 +1,15 @@
 <resources>
     <string name="app_name">WhetherFoto</string>
 
+    <!-- Сообщения до тостов-->
     <string name="toastNotSaveFoto">Не удалось сохранить фото</string>
+    <string name="toastNetworkCheckYes">Сеть есть</string>
+    <string name="toastNetworkCheckNo">Нет подключения</string>
+    <string name="toastThreadIsRuning">Поток уже запущен</string>
+
+    <!-- Ключи для различных значений-->
+    <string name="savedInstanceStateKey">camNum</string>
+    <string name="resultCheckKey">result</string>
+
+
 </resources>
