@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">WhetherFoto</string>
+
+    <string name="toastNotSaveFoto">Не удалось сохранить фото</string>
 </resources>
