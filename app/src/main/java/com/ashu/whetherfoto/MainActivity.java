@@ -1,8 +1,6 @@
 package com.ashu.whetherfoto;
 
 import android.Manifest;
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -28,6 +26,7 @@ import android.widget.ImageButton;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity{
 
@@ -38,10 +37,6 @@ public class MainActivity extends AppCompatActivity{
     private int iCameraId;
 
     public static final int iNumberOfRequest = 23401;
-
-    private static final String APP_PREFERENCES = "settings";
-    private static final String APP_PREFERENCES_FOTOCOUNTER = "FotoCount";
-    private SharedPreferences sfSettings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,20 +94,13 @@ public class MainActivity extends AppCompatActivity{
                 camera.takePicture(null, null, new Camera.PictureCallback() {
                     @Override
                     public void onPictureTaken(byte[] data, Camera camera) {
-                        sfSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
-                        String stFotoCounter = "AF_0.jpg";
-                        if (sfSettings.contains(APP_PREFERENCES_FOTOCOUNTER)) {
-                            int iCounter = sfSettings.getInt(APP_PREFERENCES_FOTOCOUNTER, 0);
-                            iCounter++;
-                            SharedPreferences.Editor editor = sfSettings.edit();
-                            editor.putInt(APP_PREFERENCES_FOTOCOUNTER, iCounter);
-                            editor.apply();
-                            stFotoCounter = "AF_" + String.valueOf(iCounter) + ".jpg";
-                        }else {
-                            SharedPreferences.Editor editor = sfSettings.edit();
-                            editor.putInt(APP_PREFERENCES_FOTOCOUNTER, 0);
-                            editor.apply();
-                        }
+
+                        //берем время в миллисекундах
+                        String timeStamp = String.valueOf(
+                                TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()));
+
+                        //Получаем имя файла из времени и расширения
+                        String stFotoCounter = timeStamp + ".jpg";
 
                         // получаем путь к папке во внутренней памяти
                         File sdPath = Environment
@@ -314,7 +302,7 @@ public class MainActivity extends AppCompatActivity{
         Matrix mtx = new Matrix();
 
         switch (orientation) {
-            case 0:
+            case Surface.ROTATION_0:
                 //вертикальная ориентация, обычная
                 if (cameraId == 1){
                     mtx.setRotate(-90);
@@ -324,13 +312,13 @@ public class MainActivity extends AppCompatActivity{
                 }
 
                 break;
-            case 1:
+            case Surface.ROTATION_90:
 
                 if (cameraId == 1){
                     mtx.preScale(-1,1); //делеам зеркальное отображение
                 }
                 break;
-            case 2:
+            case Surface.ROTATION_180:
                 //вертикальная, верх ногами, если поддерживается телефоном
                 if (cameraId == 1){
                     mtx.setRotate(90);
@@ -340,7 +328,7 @@ public class MainActivity extends AppCompatActivity{
                 }
 
                 break;
-            case 3:
+            case Surface.ROTATION_270:
                 //горизонтальная, камера справа
                 if (cameraId == 1){
                     mtx.setRotate(-180);
