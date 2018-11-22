@@ -14,6 +14,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.hardware.Camera;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -27,7 +28,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity{
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+public class MainActivity extends AppCompatActivity {
 
     private SurfaceView surfaceView;
     private Camera camera;
@@ -45,16 +50,19 @@ public class MainActivity extends AppCompatActivity{
     private Runnable runnableMainActivity;
     private boolean flagThreadIsRun = false; //переменная для проверики запущен ли поток или нет
 
+    String TAG = "WEATHER";
+    WeatherAPI.ApiInterface api;
+
     @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         //восстанавливаем состояние при повороте
-        if(savedInstanceState != null){
+        if (savedInstanceState != null) {
             iCameraId = savedInstanceState.getInt(
                     getResources().getString(R.string.savedInstanceStateKey), 0);
-        }else{
+        } else {
             iCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
         }
 
@@ -125,7 +133,7 @@ public class MainActivity extends AppCompatActivity{
                         // добавляем свой каталог к пути
                         sdPath = new File(sdPath.getAbsolutePath() + "/" + "WhetherFoto");
                         // создаем каталог
-                        if (!sdPath.exists()){
+                        if (!sdPath.exists()) {
                             boolean isDirectoryCreated = sdPath.mkdir();
                             //если не получилось, то пишем в каталог по умолчанию
                             if (!isDirectoryCreated) {
@@ -151,7 +159,7 @@ public class MainActivity extends AppCompatActivity{
                             //realImage = rotate(realImage, rotation, iCameraId);
                             if (realImage != null) {
                                 realImage.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-                            }else {
+                            } else {
                                 Toast.makeText(
                                         getApplicationContext(),
                                         getResources().getString(R.string.toastNotSaveFoto),
@@ -184,9 +192,9 @@ public class MainActivity extends AppCompatActivity{
                 camera.release();
 
                 //меняем камеру
-                if (iCameraId ==  Camera.CameraInfo.CAMERA_FACING_BACK){
+                if (iCameraId == Camera.CameraInfo.CAMERA_FACING_BACK) {
                     iCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
-                }else {
+                } else {
                     iCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
                 }
 
@@ -220,7 +228,7 @@ public class MainActivity extends AppCompatActivity{
                         Manifest.permission.READ_EXTERNAL_STORAGE}, iNumberOfRequest);
             }
 
-            if (canCam != PackageManager.PERMISSION_GRANTED){
+            if (canCam != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.CAMERA}, iNumberOfRequest);
             }
         }
@@ -233,12 +241,15 @@ public class MainActivity extends AppCompatActivity{
                 String result_check = bundle.getString(
                         getResources().getString(R.string.resultCheckKey));
 
-                if (result_check != null && result_check.equals("true")){
+
+                if (result_check != null && result_check.equals("true")) {
+                    String wheather = bundle.getString(
+                            "wheather");
                     Toast.makeText(
                             getApplicationContext(),
-                            getResources().getString(R.string.toastNetworkCheckYes),
+                            wheather,
                             Toast.LENGTH_SHORT).show();
-                }else{
+                } else {
                     Toast.makeText(
                             getApplicationContext(),
                             getResources().getString(R.string.toastNetworkCheckNo),
@@ -256,22 +267,56 @@ public class MainActivity extends AppCompatActivity{
                 flagThreadIsRun = true;
                 NetworkCheck = new NetworkCheck(getApplicationContext());
                 boolean resultCheck = NetworkCheck.checkInternet();
-                Bundle bundle = new Bundle();
-                if (resultCheck){
+                final Bundle bundle = new Bundle();
+                if (resultCheck) {
                     bundle.putString(
                             getResources().getString(R.string.resultCheckKey),
                             String.valueOf(true));
 
-                }else {
+                    api = WeatherAPI.getClient().create(WeatherAPI.ApiInterface.class);
+                    Double lat = 60.08;
+                    Double lng = 30.32;
+                    String units = "metric";
+                    String key = WeatherAPI.KEY;
+
+                    // get weather for today
+                    Call<WeatherDay> callToday = api.getToday(lat, lng, units, key);
+                    callToday.enqueue(new Callback<WeatherDay>() {
+                        @Override
+                        public void onResponse(Call<WeatherDay> call, Response<WeatherDay> response) {
+                            Log.e(TAG, "onResponse");
+                            WeatherDay data = response.body();
+
+                            if (response.isSuccessful()) {
+
+                                bundle.putString(
+                                        "wheather",
+                                        data.getCity() + " " + data.getTempWithDegree());
+                                Message msg = handlerMainActivity.obtainMessage();
+                                msg.setData(bundle);
+                                handlerMainActivity.sendMessage(msg);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<WeatherDay> call, Throwable t) {
+                            Log.e(TAG, "onFailure");
+                            Log.e(TAG, t.toString());
+                        }
+                    });
+                } else {
                     bundle.putString(
                             getResources().getString(R.string.resultCheckKey),
                             String.valueOf(false));
+                    Message msg = handlerMainActivity.obtainMessage();
+                    msg.setData(bundle);
+                    handlerMainActivity.sendMessage(msg);
                 }
-                Message msg = handlerMainActivity.obtainMessage();
-                msg.setData(bundle);
-                handlerMainActivity.sendMessage(msg);
+
             }
         };
+
+
     }
 
 
@@ -283,21 +328,20 @@ public class MainActivity extends AppCompatActivity{
     }
 
     @Override
-    protected void onStart(){
+    protected void onStart() {
         super.onStart();
 
-        if (!flagThreadIsRun){
+        if (!flagThreadIsRun) {
             Thread threadMainActivity = new Thread(runnableMainActivity);
             threadMainActivity.setDaemon(true);
             threadMainActivity.start();
-        }else{
+        } else {
             Toast.makeText(
                     getApplicationContext(),
                     getResources().getString(R.string.toastThreadIsRuning),
                     Toast.LENGTH_SHORT).show();
         }
     }
-
 
 
     @Override
@@ -319,11 +363,9 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onPause() {
         super.onPause();
-        if (camera != null){
+        if (camera != null) {
             camera.release();
             camera = null;
         }
     }
-
-
 }
