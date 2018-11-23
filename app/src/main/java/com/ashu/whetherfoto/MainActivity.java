@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.RectF;
+import android.media.MediaScannerConnection;
+import android.support.media.ExifInterface;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -52,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     String TAG = "WEATHER";
     WeatherAPI.ApiInterface api;
+    private String wheather;
 
     @SuppressLint("HandlerLeak")
     @Override
@@ -125,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
                                 TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()));
 
                         //Получаем имя файла из времени и расширения
-                        String stFotoCounter = timeStamp + ".jpg";
+                        String stFotoCounter ="A_" + timeStamp + ".jpg";
 
                         // получаем путь к папке во внутренней памяти
                         File sdPath = Environment
@@ -165,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
                                         getResources().getString(R.string.toastNotSaveFoto),
                                         Toast.LENGTH_SHORT).show();
                             }
+                            fos.flush();
                             fos.close();
 
                             //обновляем экран после снимка
@@ -177,6 +181,26 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
+
+                        ExifInterface exif;
+                        try {
+                            exif = new ExifInterface(sdPath + "/" + stFotoCounter);
+                            exif.setAttribute(ExifInterface.TAG_MAKE,
+                                    String.valueOf(wheather));
+
+                                exif.saveAttributes();
+
+                        } catch (IOException e) {
+                            Log.e("PictureActivity", e.getLocalizedMessage());
+                        }
+
+                        //Для того, чтобы файл был видет в ФМ.
+                        File imageFile = photoFile;
+                        MediaScannerConnection.scanFile(
+                                getApplicationContext(),
+                                new String[] { imageFile.getPath() },
+                                new String[] { "image/jpeg" },
+                                null);
                     }
                 });
             }
@@ -243,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 if (result_check != null && result_check.equals("true")) {
-                    String wheather = bundle.getString(
+                    wheather = bundle.getString(
                             "wheather");
                     Toast.makeText(
                             getApplicationContext(),
@@ -274,8 +298,8 @@ public class MainActivity extends AppCompatActivity {
                             String.valueOf(true));
 
                     api = WeatherAPI.getClient().create(WeatherAPI.ApiInterface.class);
-                    Double lat = 60.08;
-                    Double lng = 30.32;
+                    Double lat = 59.9387;
+                    Double lng = 30.3162;
                     String units = "metric";
                     String key = WeatherAPI.KEY;
 
