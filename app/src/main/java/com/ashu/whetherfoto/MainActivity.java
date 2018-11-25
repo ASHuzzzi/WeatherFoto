@@ -3,20 +3,14 @@ package com.ashu.whetherfoto;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.RectF;
-import android.media.MediaScannerConnection;
-import android.support.media.ExifInterface;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.hardware.Camera;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -25,36 +19,29 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import com.ashu.whetherfoto.Weather.WeatherTake;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
     private SurfaceView surfaceView;
     private Camera camera;
-    private File photoFile;
 
     private int iCameraId;
 
     public static final int iNumberOfRequest = 23401;
 
-    private BitmapRotate BitmapRotate;
     private PrepareCam PrepareCam;
     private NetworkCheck NetworkCheck;
+    private WeatherTake WeatherTake;
+    private SaveNewFoto SaveNewFoto;
 
     private Handler handlerMainActivity;
     private Runnable runnableMainActivity;
     private boolean flagThreadIsRun = false; //переменная для проверики запущен ли поток или нет
 
-    String TAG = "WEATHER";
-    WeatherAPI.ApiInterface api;
-    private String wheather;
+    private String stWeatherResult;
 
     @SuppressLint("HandlerLeak")
     @Override
@@ -78,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
         surfaceView = findViewById(R.id.surfaceView);
 
         PrepareCam = new PrepareCam();
+
+        stWeatherResult= " ";
 
         final SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new SurfaceHolder.Callback() {
@@ -123,84 +112,27 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onPictureTaken(byte[] data, Camera camera) {
 
-                        //берем время в миллисекундах
-                        String timeStamp = String.valueOf(
-                                TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()));
-
-                        //Получаем имя файла из времени и расширения
-                        String stFotoCounter ="A_" + timeStamp + ".jpg";
-
-                        // получаем путь к папке во внутренней памяти
-                        File sdPath = Environment
-                                .getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                        // добавляем свой каталог к пути
-                        sdPath = new File(sdPath.getAbsolutePath() + "/" + "WhetherFoto");
-                        // создаем каталог
-                        if (!sdPath.exists()) {
-                            boolean isDirectoryCreated = sdPath.mkdir();
-                            //если не получилось, то пишем в каталог по умолчанию
-                            if (!isDirectoryCreated) {
-                                sdPath = Environment
-                                        .getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                            }
-                        }
-
-                        photoFile = new File(sdPath, stFotoCounter);
-
-
+                        //обновляем экран после снимка
                         try {
-                            FileOutputStream fos = new FileOutputStream(photoFile);
-
-                            Bitmap realImage = BitmapFactory.decodeByteArray(data, 0, data.length);
-
-                            //берем угол поворота телефона
-                            int rotation = getWindowManager().getDefaultDisplay().getRotation();
-
-                            //поворачиваем изобажение
-                            BitmapRotate = new BitmapRotate();
-                            realImage = BitmapRotate.rotate(realImage, rotation, iCameraId);
-                            //realImage = rotate(realImage, rotation, iCameraId);
-                            if (realImage != null) {
-                                realImage.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-                            } else {
-                                Toast.makeText(
-                                        getApplicationContext(),
-                                        getResources().getString(R.string.toastNotSaveFoto),
-                                        Toast.LENGTH_SHORT).show();
-                            }
-                            fos.flush();
-                            fos.close();
-
-                            //обновляем экран после снимка
-                            try {
-                                camera.setPreviewDisplay(holder);
-                                camera.startPreview();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        } catch (Exception e) {
+                            camera.setPreviewDisplay(holder);
+                            camera.startPreview();
+                        } catch (IOException e) {
                             e.printStackTrace();
                         }
 
-                        ExifInterface exif;
-                        try {
-                            exif = new ExifInterface(sdPath + "/" + stFotoCounter);
-                            exif.setAttribute(ExifInterface.TAG_MAKE,
-                                    String.valueOf(wheather));
+                        //берем угол поворота телефона
+                        int rotation = getWindowManager().getDefaultDisplay().getRotation();
 
-                                exif.saveAttributes();
+                        SaveNewFoto = new SaveNewFoto(getApplicationContext());
+                        boolean bResult = SaveNewFoto.saveNewFoto(
+                                data,rotation, iCameraId, stWeatherResult, getResources().getString(R.string.app_name));
 
-                        } catch (IOException e) {
-                            Log.e("PictureActivity", e.getLocalizedMessage());
+                        if (!bResult) {
+                            Toast.makeText(
+                                    getApplicationContext(),
+                                    getResources().getString(R.string.toastNotSaveFoto),
+                                    Toast.LENGTH_SHORT).show();
                         }
-
-                        //Для того, чтобы файл был видет в ФМ.
-                        File imageFile = photoFile;
-                        MediaScannerConnection.scanFile(
-                                getApplicationContext(),
-                                new String[] { imageFile.getPath() },
-                                new String[] { "image/jpeg" },
-                                null);
                     }
                 });
             }
@@ -265,13 +197,10 @@ public class MainActivity extends AppCompatActivity {
                 String result_check = bundle.getString(
                         getResources().getString(R.string.resultCheckKey));
 
-
                 if (result_check != null && result_check.equals("true")) {
-                    wheather = bundle.getString(
-                            "wheather");
                     Toast.makeText(
                             getApplicationContext(),
-                            wheather,
+                            getResources().getString(R.string.toastWeatherLoad),
                             Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(
@@ -288,46 +217,29 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
 
+
                 flagThreadIsRun = true;
                 NetworkCheck = new NetworkCheck(getApplicationContext());
                 boolean resultCheck = NetworkCheck.checkInternet();
                 final Bundle bundle = new Bundle();
+
                 if (resultCheck) {
-                    bundle.putString(
-                            getResources().getString(R.string.resultCheckKey),
-                            String.valueOf(true));
+                    WeatherTake = new WeatherTake();
+                    stWeatherResult = WeatherTake.waetherTake();
 
-                    api = WeatherAPI.getClient().create(WeatherAPI.ApiInterface.class);
-                    Double lat = 59.9387;
-                    Double lng = 30.3162;
-                    String units = "metric";
-                    String key = WeatherAPI.KEY;
+                    //если данные по погоде получены, то записываем их в переменную
+                    if(stWeatherResult.length() > 1){
+                        bundle.putString(
+                                getResources().getString(R.string.resultCheckKey),
+                                String.valueOf(true));
 
-                    // get weather for today
-                    Call<WeatherDay> callToday = api.getToday(lat, lng, units, key);
-                    callToday.enqueue(new Callback<WeatherDay>() {
-                        @Override
-                        public void onResponse(Call<WeatherDay> call, Response<WeatherDay> response) {
-                            Log.e(TAG, "onResponse");
-                            WeatherDay data = response.body();
-
-                            if (response.isSuccessful()) {
-
-                                bundle.putString(
-                                        "wheather",
-                                        data.getCity() + " " + data.getTempWithDegree());
-                                Message msg = handlerMainActivity.obtainMessage();
-                                msg.setData(bundle);
-                                handlerMainActivity.sendMessage(msg);
-                            }
-                        }
-
-                        @Override
-                        public void onFailure(Call<WeatherDay> call, Throwable t) {
-                            Log.e(TAG, "onFailure");
-                            Log.e(TAG, t.toString());
-                        }
-                    });
+                        bundle.putString(
+                                getResources().getString(R.string.resultWheatherKey),
+                                stWeatherResult);
+                        Message msg = handlerMainActivity.obtainMessage();
+                        msg.setData(bundle);
+                        handlerMainActivity.sendMessage(msg);
+                    }
                 } else {
                     bundle.putString(
                             getResources().getString(R.string.resultCheckKey),
@@ -336,11 +248,8 @@ public class MainActivity extends AppCompatActivity {
                     msg.setData(bundle);
                     handlerMainActivity.sendMessage(msg);
                 }
-
             }
         };
-
-
     }
 
 
@@ -355,15 +264,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        //проверяем запущен ли поток
         if (!flagThreadIsRun) {
             Thread threadMainActivity = new Thread(runnableMainActivity);
             threadMainActivity.setDaemon(true);
             threadMainActivity.start();
-        } else {
-            Toast.makeText(
-                    getApplicationContext(),
-                    getResources().getString(R.string.toastThreadIsRuning),
-                    Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -1,15 +1,18 @@
 <resources>
-    <string name="app_name">WhetherFoto</string>
+    <string name="app_name">WheatherFoto</string>
 
     <!-- Сообщения до тостов-->
     <string name="toastNotSaveFoto">Не удалось сохранить фото</string>
     <string name="toastNetworkCheckYes">Сеть есть</string>
     <string name="toastNetworkCheckNo">Нет подключения</string>
     <string name="toastThreadIsRuning">Поток уже запущен</string>
+    <string name="toastWeatherLoad">Данные о погоде получены</string>
 
     <!-- Ключи для различных значений-->
     <string name="savedInstanceStateKey">camNum</string>
     <string name="resultCheckKey">result</string>
+    <string name="resultWheatherKey">wheather</string>
+
 
 
 </resources>

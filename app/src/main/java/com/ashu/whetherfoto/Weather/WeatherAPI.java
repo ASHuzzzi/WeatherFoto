@@ -1,4 +1,4 @@
-package com.ashu.whetherfoto;
+package com.ashu.whetherfoto.Weather;
 
 import retrofit2.Call;
 import retrofit2.Retrofit;

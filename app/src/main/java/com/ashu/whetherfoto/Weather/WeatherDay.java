@@ -1,4 +1,4 @@
-package com.ashu.whetherfoto;
+package com.ashu.whetherfoto.Weather;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -39,6 +39,7 @@ public class WeatherDay {
         return date;
     }
 
+    //пока оставил все методы
     public String getTemp() { return String.valueOf(temp.temp); }
 
     public String getTempMin() { return String.valueOf(temp.temp_min); }
